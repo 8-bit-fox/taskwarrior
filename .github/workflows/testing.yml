@@ -1,0 +1,38 @@
+on: [push]
+
+jobs:
+  tw-test-job:
+    runs-on: ubuntu-latest
+    name: Taskwarrior build
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['tw-ubuntu:18.04', 'tw-arch:base', 'tw-centos:7']
+    container: ghcr.io/8-bit-fox/${{ matrix.image }}
+    steps:
+    - name: Checkout code into workspace
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - name: Show OS
+      run: cat /etc/os-release
+    - name: Show gxx version
+      run: gcc --version && g++ --version
+    - name: Setup build
+      run: cmake -DCMAKE_BUILT_TYPE=debug .
+    - name: Build
+      run: |
+        make
+        make install
+    - name: Task version
+      run: task --version
+    - name: Build Tests
+      run: make
+      working-directory: ./test
+    - name: Evaluate tests
+      run: |
+        ./run_all -v
+        cat all.log | grep 'not ok'
+        ./problems
+      working-directory: ./test
+
